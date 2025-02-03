@@ -1715,6 +1715,68 @@ class VannaBase(ABC):
       self.run_sql_is_set = True
       self.run_sql = run_sql_hive
 
+
+import os
+import pandas as pd
+import sqlalchemy as sa
+from sqlalchemy.engine import URL
+
+
+
+def connect_to_teradata(self, odbc_conn_str: str, **kwargs):
+    """
+    Connect to a Teradata database. This is just a helper function to set [`vn.run_sql`][vanna.base.base.VannaBase.run_sql]
+
+    Args:
+        odbc_conn_str (str): The ODBC connection string for Teradata.
+
+    Returns:
+        None
+    """
+    try:
+        import pyodbc
+    except ImportError:
+        raise DependencyError(
+            "You need to install required dependencies to execute this method,"
+            " run command: pip install pyodbc"
+        )
+
+    try:
+        import sqlalchemy as sa
+        from sqlalchemy.engine import URL
+    except ImportError:
+        raise DependencyError(
+            "You need to install required dependencies to execute this method,"
+            " run command: pip install sqlalchemy"
+        )
+
+    # Create the connection URL for Teradata using SQLAlchemy
+    connection_url = URL.create(
+        "teradata+pyodbc", query={"odbc_connect": odbc_conn_str}
+    )
+
+    from sqlalchemy import create_engine
+
+    # Create the SQLAlchemy engine for Teradata
+    engine = create_engine(connection_url, **kwargs)
+
+    def run_sql_teradata(sql: str):
+        # Execute the SQL statement and return the result as a pandas DataFrame
+        with engine.begin() as conn:
+            df = pd.read_sql_query(sa.text(sql), conn)
+            conn.close()
+            return df
+
+        raise Exception("Couldn't run sql")
+
+    self.dialect = "Teradata SQL"
+    self.run_sql = run_sql_teradata
+    self.run_sql_is_set = True
+
+
+
+  
+
     def run_sql(self, sql: str, **kwargs) -> pd.DataFrame:
         """
         Example:
